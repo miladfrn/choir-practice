@@ -163,16 +163,19 @@
   button.startBtn .l2 { font-size: 9.5px; font-weight: 400; color: inherit; opacity: 0.85; }
 
   #liveNote { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; overflow: hidden; }
-  #liveNoteName { font-weight: 600; font-size: 38px; line-height: 1; transition: color 120ms ease; flex: 0 0 auto; }
+  /* 3x the original kamancheh-practice sizes (38/17/11px) - easier to read
+     at a glance while singing, since you're looking up at a screen rather
+     than closely at an instrument fingerboard. */
+  #liveNoteName { font-weight: 600; font-size: 114px; line-height: 1; transition: color 120ms ease; flex: 0 0 auto; }
   #liveNoteName sup { font-size: 0.48em; vertical-align: 55%; }
   #liveNoteName sub { font-size: 0.48em; vertical-align: -15%; }
   #liveNoteStack { display: flex; flex-direction: column; gap: 1px; flex: 0 0 auto; line-height: 1.15; }
   #liveNoteCents {
-    font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: 17px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: 51px;
     color: var(--fg);
   }
   #liveNoteFreq {
-    font-family: 'JetBrains Mono', monospace; font-weight: 300; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 300; font-size: 33px;
     color: var(--fg-dim);
   }
 
