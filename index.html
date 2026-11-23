@@ -1113,7 +1113,7 @@
     sessionPaused = false;
     preStart.hidden = true;
     postStart.hidden = false;
-    setStatus(msg || ("Session started at " + bpm + " bpm."));
+    if (msg) setStatus(msg);
   }
   function endSession() {
     // Recorded data (segments/scatterPoints) deliberately survives Stop, so
