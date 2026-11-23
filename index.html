@@ -398,8 +398,8 @@
         <button id="notationToggle" class="on">Do Re Mi</button>
       </div>
       <div id="gapRow" class="headerPill">
-        <span title="How easily a brief dip between notes counts as a gap">Gap</span>
-        <button id="sensToggle">Med</button>
+        <span title="How easily a brief dip between notes counts as a gap">Sensitivity</span>
+        <button id="sensToggle">4</button>
       </div>
       <div id="pitchScaleRow" class="headerPill">
         <span title="Space staff lines by real pitch distance">Pitch-scaled lines</span>
@@ -1174,11 +1174,14 @@
   // level as a gap. Low = fewer false gaps from bow noise/vibrato; High =
   // catches brief dips, even forceful ones, more eagerly.
   var SENS_LEVELS = [
-    { label: "Low", floor: 0.0035, hold: 550, dip: 0.45 },
-    { label: "Med", floor: 0.0018, hold: 220, dip: 0.65 },
-    { label: "High", floor: 0.001, hold: 120, dip: 0.8 },
-    { label: "High+", floor: 0.0006, hold: 70, dip: 0.88 },
-    { label: "High++", floor: 0.0004, hold: 40, dip: 0.93 }
+    { label: "5", floor: 0.0035, hold: 550, dip: 0.45 },
+    { label: "4", floor: 0.0018, hold: 220, dip: 0.65 },
+    { label: "3", floor: 0.001, hold: 120, dip: 0.8 },
+    { label: "2", floor: 0.0006, hold: 70, dip: 0.88 },
+    { label: "1", floor: 0.0004, hold: 40, dip: 0.93 },
+    { label: "6", floor: 0.00028, hold: 25, dip: 0.95 },
+    { label: "7", floor: 0.00018, hold: 15, dip: 0.97 },
+    { label: "8", floor: 0.00012, hold: 10, dip: 0.98 }
   ];
   var sensIdx = 1;
   // Measured once per mic grant (see calibrateAmbientNoise): the actual
