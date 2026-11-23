@@ -2312,16 +2312,17 @@
     staffCtx.clearRect(0, 0, w, h);
     if (rollWithTime) drawBeatGrid(staffCtx, w, 0, h);
 
-    // Staff lines: one solid guide per natural note within the configured
-    // range (Settings > Range low/high), instead of a fixed 5-line block
-    // plus separate ledger guides beyond it - the whole point of a
-    // configurable range is that it IS the useful span, so every labeled
-    // note within it gets an equally-real line, not a core-vs-extension
-    // split anchored on a fixed E4-F5 staff.
+    // Staff lines: only every OTHER natural note is a line (E,G,B,D,F... -
+    // the traditional line/space alternation, anchored at E4 same as
+    // before), across the configured range (Settings > Range low/high)
+    // instead of a fixed 5-line block plus separate ledger guides beyond
+    // it. Drawing a line at EVERY natural note (line and space both) was
+    // the bug - that's not what a staff looks like.
     staffCtx.strokeStyle = "#eef3fb55";
     staffCtx.lineWidth = 1;
     for (var midiLine = Math.ceil(staffRangeLowMidi); midiLine <= Math.floor(staffRangeHighMidi); midiLine++) {
       if (SHARP_BY_PC[pc(midiLine)]) continue;
+      if ((diatonicStep(midiLine) - E4_STEP) % 2 !== 0) continue; // a "space", not a line
       var yLine = pitchScaled ? pitchScaleY(midiLine) : staffY(midiLine);
       staffCtx.beginPath(); staffCtx.moveTo(0, yLine); staffCtx.lineTo(w, yLine); staffCtx.stroke();
     }
