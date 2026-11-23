@@ -203,7 +203,10 @@
 
 
   /* ---- tab switcher ---- */
-  #tabBar { flex: 0 0 auto; display: flex; gap: 6px; }
+  /* Moved below the content panels (still above the status bar) - #main is
+     a flex column, so this is purely a visual reorder, no HTML/JS change. */
+  #tabBar { flex: 0 0 auto; display: flex; gap: 6px; order: 1; }
+  #statusBar { order: 2; }
   #tabBar button {
     flex: 1 1 0; flex-direction: column; justify-content: center;
     gap: 1px; font-size: 11.5px; line-height: 1.25; text-align: center;
