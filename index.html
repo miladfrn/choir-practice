@@ -225,7 +225,7 @@
   #statusBar { order: 2; }
   #tabBar button {
     flex: 1 1 0; flex-direction: column; justify-content: center;
-    gap: 1px; font-size: 11.5px; line-height: 1.25; text-align: center;
+    gap: 1px; font-size: 18px; line-height: 1.25; text-align: center; /* same as the Start button's label */
   }
   #tabBar button.on { background: var(--accent); border-color: var(--accent); color: #1c1200; font-weight: 700; }
   #tabBook .l2 { font-size: 9.5px; font-weight: 400; opacity: 0.85; }
@@ -254,36 +254,6 @@
   }
   #bookRefLiveBtn:not(.on) { background: #13213cdd; }
 
-  /* ---- rhythm: one row per held note, log-scaled note-value grid ---- */
-  #rhythmPanel {
-    flex: 1 1 0; min-height: 0;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    overflow: hidden; position: relative;
-  }
-  #rhythmScroll {
-    width: 100%; height: 100%;
-    overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
-    -webkit-overflow-scrolling: touch;
-  }
-  #rhythmCanvas { display: block; width: 100%; }
-  #rhythmZoomLow, #rhythmZoomHigh {
-    position: absolute; top: 8px; z-index: 3; display: flex; gap: 4px;
-  }
-  #rhythmZoomLow { left: 44px; }
-  #rhythmZoomHigh { right: 26px; }
-  #rhythmZoomLow button, #rhythmZoomHigh button {
-    width: 26px; height: 26px; padding: 0; justify-content: center; font-size: 13px; background: #13213cdd;
-  }
-  #rhythmStats, #rhythmLast {
-    position: absolute; right: 26px; z-index: 3; text-align: right;
-    background: #13213cdd; border: 1px solid var(--line); border-radius: 8px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  #rhythmStats { top: 40px; padding: 5px 8px; }
-  #rhythmLast { bottom: 10px; padding: 5px 10px; }
-  #rhythmStats .cap, #rhythmLast .cap { font-size: 9px; color: var(--fg-dim); }
-  #rhythmStats .val { font-size: 11px; color: var(--fg-dim); }
-  #rhythmLast .val { font-size: 24px; font-weight: 700; line-height: 1; color: var(--fg-dim); }
 
   /* ---- scope panel ---- */
   #scopeOuter {
@@ -399,7 +369,7 @@
         <button id="notationToggle" class="on">Do Re Mi</button>
       </div>
       <div id="gapRow" class="headerPill">
-        <span title="How easily a brief dip between notes counts as a gap">Gap</span>
+        <span title="How easily a brief dip between notes counts as a gap">Sensitivity</span>
         <button id="sensToggle">Med</button>
       </div>
       <div id="pitchScaleRow" class="headerPill">
@@ -421,14 +391,6 @@
       <div id="rhythmTempoRow" class="headerPill">
         <span title="What tempo Staff-tab Detect Rhythm judges notes against">Detect Rhythm tempo</span>
         <button id="rhythmTempoToggle">Dialed-in</button>
-      </div>
-      <div id="rhythmDiscardRow" class="headerPill">
-        <span title="Staff-tab Detect Rhythm: drop detected notes much shorter than a plausible note value, instead of showing them">Discard short notes</span>
-        <button id="rhythmDiscardToggle" class="on">On</button>
-      </div>
-      <div id="rhythmMergeRow" class="headerPill">
-        <span title="Staff-tab Detect Rhythm: a bow change on the same pitch - merge into the held note, or read as its own note">Same-pitch notes</span>
-        <button id="rhythmMergeToggle" class="on">Merge</button>
       </div>
       <button id="settingsClose" class="primary">Done</button>
     </div>
@@ -470,7 +432,6 @@
       <button id="tabStaff" class="on">Staff</button>
       <button id="tabContour">Contour</button>
       <button id="tabBook"><span class="l1">Practice</span><span class="l2" id="tabBookSub" hidden></span></button>
-      <button id="tabRhythm">Rhythm</button>
     </div>
 
     <div id="piecePicker" hidden>
@@ -487,29 +448,6 @@
         <canvas id="bookRefCanvas"></canvas>
       </div>
       <button id="bookRefLiveBtn" class="on">● following live</button>
-    </div>
-
-    <div id="rhythmPanel" hidden>
-      <div id="rhythmScroll">
-        <canvas id="rhythmCanvas"></canvas>
-      </div>
-      <div id="rhythmZoomLow">
-        <button id="rhythmZoomLowOut" title="Show a smaller note value">&minus;</button>
-        <button id="rhythmZoomLowIn" title="Hide the smallest note value">+</button>
-      </div>
-      <div id="rhythmZoomHigh">
-        <button id="rhythmZoomHighOut" title="Hide the largest note value">&minus;</button>
-        <button id="rhythmZoomHighIn" title="Show a larger note value">+</button>
-      </div>
-      <div id="rhythmStats">
-        <div class="cap">fitted</div>
-        <div class="val" id="rhythmAvgErr">median --</div>
-        <div class="val" id="rhythmAvgBpm">-- bpm</div>
-      </div>
-      <div id="rhythmLast">
-        <div class="cap">last note</div>
-        <div class="val" id="rhythmLastErr">--</div>
-      </div>
     </div>
 
     <div id="scopeOuter">
@@ -706,13 +644,8 @@
   var liveNoteName = $("liveNoteName"), liveNoteCents = $("liveNoteCents"), liveNoteFreq = $("liveNoteFreq");
   var controlBar = $("controlBar"), liveNote = $("liveNote");
 
-  var tabStaff = $("tabStaff"), tabContour = $("tabContour"), tabBook = $("tabBook"), tabRhythm = $("tabRhythm");
+  var tabStaff = $("tabStaff"), tabContour = $("tabContour"), tabBook = $("tabBook");
   var scopeOuter = $("scopeOuter");
-  var rhythmPanel = $("rhythmPanel"), rhythmScroll = $("rhythmScroll");
-  var rhythmCanvas = $("rhythmCanvas"), rhythmCtx = rhythmCanvas.getContext("2d");
-  var rhythmZoomLowOut = $("rhythmZoomLowOut"), rhythmZoomLowIn = $("rhythmZoomLowIn");
-  var rhythmZoomHighOut = $("rhythmZoomHighOut"), rhythmZoomHighIn = $("rhythmZoomHighIn");
-  var rhythmAvgErr = $("rhythmAvgErr"), rhythmAvgBpm = $("rhythmAvgBpm"), rhythmLastErr = $("rhythmLastErr");
   var piecePicker = $("piecePicker"), piecePickerList = $("piecePickerList"), piecePickerClose = $("piecePickerClose");
   var tabBookSub = $("tabBookSub");
   var bookRefPanel = $("bookRefPanel"), bookRefScroll = $("bookRefScroll");
@@ -790,18 +723,8 @@
   // default since a stray short segment was cluttering the staff with
   // symbols for notes that were never really played. Exposed as a setting
   // since a real very-short note is technically possible, however rare.
-  var rhythmDiscardToggle = $("rhythmDiscardToggle");
-  var staffDiscardShort = true;
-  var STAFF_RHYTHM_FLOOR_BEATS = 0.25; // shortest plausible note value, in beats
-  rhythmDiscardToggle.addEventListener("click", function () {
-    staffDiscardShort = !staffDiscardShort;
-    rhythmDiscardToggle.classList.toggle("on", staffDiscardShort);
-    saveSettings();
-  });
   function isTooShortForStaffRhythm(durationMs) {
-    if (!staffDiscardShort) return false;
-    var floorMs = STAFF_RHYTHM_FLOOR_BEATS * currentStaffRhythmUnitMs();
-    return durationMs < Math.max(RHYTHM_FLOOR_MS, floorMs * 0.75);
+    return false;
   }
 
   // A same-pitch re-attack (bow change) doesn't change committedMidi, so on
@@ -814,15 +737,8 @@
   // exists specifically to catch bow articulation). This is bookkeeping
   // alongside the existing, UNCHANGED fine-grained segmentation - curSegment/
   // segments themselves, the Rhythm tab, and Book Practice are unaffected.
-  var rhythmMergeToggle = $("rhythmMergeToggle");
   var staffMergeSamePitch = true;
   var staffRhythmRunStartMs = null, staffRhythmRunMidi = null;
-  rhythmMergeToggle.addEventListener("click", function () {
-    staffMergeSamePitch = !staffMergeSamePitch;
-    rhythmMergeToggle.textContent = staffMergeSamePitch ? "Merge" : "Split";
-    rhythmMergeToggle.classList.toggle("on", staffMergeSamePitch);
-    saveSettings();
-  });
 
   // Roll with time (default): the x-axis keeps moving at real speed even
   // through silence, so a rest between two notes shows as real empty space.
@@ -883,9 +799,8 @@
   function saveSettings() {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-        a4: a4, rhythmLowExp: rhythmLowExp, rhythmHighExp: rhythmHighExp,
-        staffTempoMode: staffTempoMode, staffDiscardShort: staffDiscardShort,
-        staffMergeSamePitch: staffMergeSamePitch,
+        a4: a4,
+        staffTempoMode: staffTempoMode,
         staffRangeLowMidi: staffRangeLowMidi, staffRangeHighMidi: staffRangeHighMidi
       }));
     } catch (e) { /* storage blocked/unavailable - setting just won't persist */ }
@@ -895,28 +810,10 @@
       var raw = localStorage.getItem(SETTINGS_KEY);
       if (!raw) return;
       var s = JSON.parse(raw);
-      // Set the rhythm zoom fields FIRST: setA4 below calls saveSettings()
-      // itself, which snapshots whatever rhythmLowExp/rhythmHighExp hold at
-      // that moment - calling it before these are applied would overwrite
-      // the stored zoom with the still-default values.
-      if (typeof s.rhythmLowExp === "number" && typeof s.rhythmHighExp === "number") {
-        rhythmHighExp = Math.max(RHYTHM_EXP_MIN + 1, Math.min(RHYTHM_EXP_MAX, s.rhythmHighExp));
-        rhythmLowExp = Math.max(RHYTHM_EXP_MIN, Math.min(rhythmHighExp - 1, s.rhythmLowExp));
-        fitRhythmPanel(); drawRhythmPanel();
-      }
       if (typeof s.staffTempoMode === "string") {
         staffTempoMode = s.staffTempoMode === "auto" ? "auto" : "dialed";
         rhythmTempoToggle.textContent = staffTempoMode === "dialed" ? "Dialed-in" : "Auto-fit";
         rhythmTempoToggle.classList.toggle("on", staffTempoMode === "auto");
-      }
-      if (typeof s.staffDiscardShort === "boolean") {
-        staffDiscardShort = s.staffDiscardShort;
-        rhythmDiscardToggle.classList.toggle("on", staffDiscardShort);
-      }
-      if (typeof s.staffMergeSamePitch === "boolean") {
-        staffMergeSamePitch = s.staffMergeSamePitch;
-        rhythmMergeToggle.textContent = staffMergeSamePitch ? "Merge" : "Split";
-        rhythmMergeToggle.classList.toggle("on", staffMergeSamePitch);
       }
       if (typeof s.staffRangeLowMidi === "number" && typeof s.staffRangeHighMidi === "number") {
         staffRangeHighMidi = Math.min(STAFF_RANGE_ABS_MAX, Math.max(STAFF_RANGE_ABS_MIN + STAFF_RANGE_MIN_SPAN, s.staffRangeHighMidi));
@@ -957,16 +854,10 @@
   function updateGutterAndOffsets() {
     // gutter is always visible now: cents numbers on Contour, note names
     // (at equal or pitch-scaled spacing) on Staff/Book Practice
-    scopeOuter.hidden = activeTab === "rhythm";
-    rhythmPanel.hidden = activeTab !== "rhythm";
     scopeGutter.hidden = false;
     scopeGutterNums.hidden = activeTab !== "contour";
     scopeGutterNotes.hidden = !isStaffLike(activeTab);
     bookRefPanel.hidden = activeTab !== "book";
-    if (activeTab === "rhythm") {
-      fitRhythmPanel(); drawRhythmPanel(); followRhythmPanel();
-      return;
-    }
     fitScopes();
     if (isStaffLike(activeTab)) renderGutterNotes();
     if (isStaffLike(activeTab)) drawStaff(); else drawContour();
@@ -978,14 +869,12 @@
     tabStaff.classList.toggle("on", t === "staff");
     tabContour.classList.toggle("on", t === "contour");
     tabBook.classList.toggle("on", t === "book");
-    tabRhythm.classList.toggle("on", t === "rhythm");
     staffCanvas.hidden = !isStaffLike(t);
     contourCanvas.hidden = t !== "contour";
     updateGutterAndOffsets();
   }
   tabStaff.addEventListener("click", function () { setTab("staff"); });
   tabContour.addEventListener("click", function () { setTab("contour"); });
-  tabRhythm.addEventListener("click", function () { setTab("rhythm"); });
   tabBook.addEventListener("click", function () {
     var wasActive = activeTab === "book";
     setTab("book");
@@ -1081,7 +970,6 @@
         if (pendingAfterMic) { var fn = pendingAfterMic; pendingAfterMic = null; fn(); }
       }
     }).catch(function (err) {
-      statusMsg.textContent = "Microphone permission was denied or unavailable (" + err.message + "). Allow mic access in your browser's site settings and reload.";
       statusBtn.hidden = false;
       setStatus("Microphone permission denied.");
     });
@@ -1097,9 +985,6 @@
     // otherwise block re-attack detection until activeMs catches back up to it
     reattackStableSinceMs = 0; reattackBaseline = 0; reattackDipAt = 0;
     fluxBaseline = 0; prevSpectrum = null;
-    rhythmNotes = []; rhythmUnitMs = null;
-    updateRhythmStats();
-    if (activeTab === "rhythm") { fitRhythmPanel(); drawRhythmPanel(); }
     staffRhythmRunStartMs = null; staffRhythmRunMidi = null;
     updateStaffRhythmStat();
   }
@@ -1202,7 +1087,7 @@
     var pcIdx = pc(committedMidi);
     var letter = noteSystem === "letters" ? LETTER_BY_PC[pcIdx] : NOTE_NAMES[pcIdx].replace("#", "");
     var oct = midiOctave(committedMidi);
-    liveNoteName.innerHTML = letter + (SHARP_BY_PC[pcIdx] ? "<sup>#</sup>" : "") + "<sub>" + oct + "</sub>";
+    liveNoteName.innerHTML = letter + "<sup>" + (SHARP_BY_PC[pcIdx] ? "#" : "") + oct + "</sup>";
     liveNoteCents.textContent = (c > 0 ? "+" : "") + c + "¢";
     liveNoteFreq.textContent = freq >= 1000 ? (freq / 1000).toFixed(2) + "kHz" : freq.toFixed(1) + "Hz";
     var inTune = Math.abs(c) <= 8;
@@ -1223,9 +1108,9 @@
   // level as a gap. Low = fewer false gaps from bow noise/vibrato; High =
   // catches brief dips, even forceful ones, more eagerly.
   var SENS_LEVELS = [
-    { label: "Low", floor: 0.0035, hold: 550, dip: 0.45 },
-    { label: "Med", floor: 0.0018, hold: 220, dip: 0.65 },
     { label: "High", floor: 0.001, hold: 120, dip: 0.8 },
+    { label: "Med", floor: 0.0018, hold: 220, dip: 0.65 },
+    { label: "Low", floor: 0.0035, hold: 550, dip: 0.45 },
     { label: "High+", floor: 0.0006, hold: 70, dip: 0.88 },
     { label: "High++", floor: 0.0004, hold: 40, dip: 0.93 }
   ];
@@ -1353,7 +1238,6 @@
   }
   window.addEventListener("resize", function () {
     fitScopes();
-    fitRhythmPanel(); drawRhythmPanel(); followRhythmPanel();
   });
 
   function usedWidthPx() {
@@ -1935,35 +1819,7 @@
   // dialed-in bpm only breaks the octave tie — doubling/halving it fits the
   // same data equally well, so we just pick whichever octave is closest to
   // the bpm you already set rather than trying to detect tempo from scratch.
-  var RHYTHM_ROW_H = 30;
   var RHYTHM_FLOOR_MS = 50; // below the pitch detector's own ~46ms (fftSize 2048) resolution
-  var RHYTHM_SNAP_VALUES = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16];
-  var RHYTHM_EXP_MIN = -4, RHYTHM_EXP_MAX = 6;
-  var rhythmNotes = [];     // {midi, durationMs, points:[{ms,cents}], outlier}
-  var rhythmUnitMs = null;  // fitted "1" (quarter-note-equivalent) duration, ms
-  var rhythmLowExp = -2, rhythmHighExp = 2; // visible range: 2^lowExp .. 2^highExp, drawn out to +0.5 octave past highExp
-  var rhythmW = 0;
-  var rhythmLaneX0 = 40, rhythmLaneRight = 36;
-
-  function rhythmSnapValue(ratio) {
-    var best = RHYTHM_SNAP_VALUES[0], bestDiff = Infinity;
-    RHYTHM_SNAP_VALUES.forEach(function (v) {
-      var d = Math.abs(Math.log2(Math.max(1e-6, ratio)) - Math.log2(v));
-      if (d < bestDiff) { bestDiff = d; best = v; }
-    });
-    return best;
-  }
-  function rhythmErrorAgainst(durationMs, unitMs) {
-    var ratio = durationMs / unitMs;
-    var snapped = rhythmSnapValue(ratio);
-    return (ratio / snapped - 1) * 100;
-  }
-  function rhythmSeverityColor(pct) {
-    var a = Math.abs(pct);
-    if (a <= 6) return "#7ab08f";
-    if (a <= 15) return "#d9a63a";
-    return "#d9693a";
-  }
   // Durations that are honest power-of-two multiples of a common unit are
   // evenly spaced in log2 space (doubling is always exactly +1.0), so the
   // shared unit's *phase* is a circular-mean problem: treat log2(duration)
@@ -1985,262 +1841,6 @@
     var k = Math.round(Math.log2(quarterMs) - meanFrac);
     return Math.pow(2, k + meanFrac);
   }
-  function refitRhythmGrid() {
-    var durations = rhythmNotes.map(function (n) { return n.durationMs; });
-    if (durations.length < 3) { rhythmUnitMs = 60000 / bpm; return; }
-    var T = fitRhythmUnit(durations);
-    // robust refinement: drop whatever doesn't fit even its own best octave
-    // well (median-based, so one or two true outliers can't drag the
-    // threshold itself around the way a mean+stdev cutoff would), then refit
-    var errs = durations.map(function (d) { return rhythmErrorAgainst(d, T); });
-    var sortedErrs = errs.slice().sort(function (a, b) { return a - b; });
-    var median = sortedErrs[Math.floor(sortedErrs.length / 2)];
-    var devs = errs.map(function (e) { return Math.abs(e - median); }).sort(function (a, b) { return a - b; });
-    var mad = devs[Math.floor(devs.length / 2)] || 1;
-    var thresh = Math.max(15, 3 * mad);
-    var keep = [];
-    durations.forEach(function (d, i) { if (Math.abs(errs[i] - median) <= thresh) keep.push(d); });
-    if (keep.length >= 3 && keep.length < durations.length) T = fitRhythmUnit(keep);
-    // refit periodically, not continuously — only move the grid once the fit
-    // has actually drifted, so it doesn't visibly jitter under every note
-    if (rhythmUnitMs == null || Math.abs(T / rhythmUnitMs - 1) > 0.02) rhythmUnitMs = T;
-  }
-  function updateRhythmStats() {
-    if (!rhythmNotes.length || !rhythmUnitMs) {
-      rhythmAvgErr.textContent = "median --"; rhythmAvgBpm.textContent = "-- bpm";
-      rhythmLastErr.textContent = "--"; rhythmLastErr.style.color = "var(--fg-dim)";
-      return;
-    }
-    // Median, not mean - one wildly-off note (a stray split, a rushed
-    // phrase) shouldn't drag the whole-session number around the way an
-    // average would; the median reflects "how off is a typical note."
-    var absErrs = rhythmNotes.map(function (n) { return Math.abs(rhythmErrorAgainst(n.durationMs, rhythmUnitMs)); }).sort(function (a, b) { return a - b; });
-    var mid = Math.floor(absErrs.length / 2);
-    var medianErr = absErrs.length % 2 ? absErrs[mid] : (absErrs[mid - 1] + absErrs[mid]) / 2;
-    rhythmAvgErr.textContent = "median " + Math.round(medianErr) + "%";
-    rhythmAvgBpm.textContent = Math.round(60000 / rhythmUnitMs) + " bpm";
-    var last = rhythmNotes[rhythmNotes.length - 1];
-    var e = rhythmErrorAgainst(last.durationMs, rhythmUnitMs);
-    rhythmLastErr.textContent = (e >= 0 ? "+" : "") + Math.round(e) + "%";
-    rhythmLastErr.style.color = rhythmSeverityColor(e);
-  }
-  function addRhythmNote(seg, endMs) {
-    if (!seg.points.length) return;
-    // Never confidently loud for even an instant — bow noise, a finger
-    // shift, breathing between two real notes — isn't a played note at
-    // all, so it doesn't get a row (not even a greyed-out one; that still
-    // cluttered the view with exactly the "lots of short unplayed notes"
-    // this is meant to avoid).
-    if (!seg.armed) return;
-    var startMs = seg.points[0].ms;
-    var durationMs = Math.max(1, endMs - startMs);
-    // The Rhythm tab's own "lowest note value shown" zoom setting already
-    // tells us the shortest note the player actually expects to see — a
-    // beginner zoomed in to 1/4 notes is saying "I'm not playing anything
-    // shorter than that", so a detected note well under that value is far
-    // more likely a stray artifact (hand-position shift, string-crossing
-    // noise, a residual mic blip) than a real note, regardless of what
-    // caused it. Discard it outright — same as an unarmed segment — rather
-    // than showing it greyed out, which was still cluttering the view with
-    // exactly the short spurious rows this is meant to avoid. 75% (not
-    // 100%) of the grid's own floor, so a genuine note played a little
-    // short of the nominal value isn't punished for ordinary timing slop.
-    // Still floored at RHYTHM_FLOOR_MS regardless of zoom/tempo, since
-    // nothing below the pitch detector's own ~46ms frame resolution could
-    // ever be a real measurement in the first place.
-    var gridFloorMs = Math.pow(2, rhythmLowExp) * (rhythmUnitMs || (60000 / bpm));
-    if (durationMs < Math.max(RHYTHM_FLOOR_MS, gridFloorMs * 0.75)) return;
-    rhythmNotes.push({ midi: seg.midi, durationMs: durationMs, points: seg.points.slice() });
-    if (rhythmNotes.length > 300) rhythmNotes.shift();
-    refitRhythmGrid();
-    updateRhythmStats();
-    if (activeTab === "rhythm") { fitRhythmPanel(); drawRhythmPanel(); followRhythmPanel(); }
-  }
-
-  function fitRhythmPanel() {
-    var cw = rhythmScroll.clientWidth;
-    if (!cw) return;
-    rhythmW = cw;
-    var rows = rhythmNotes.length + 1; // +1 for the still-growing live row
-    var ch = Math.max(rhythmScroll.clientHeight || 0, rows * RHYTHM_ROW_H + 16);
-    rhythmCanvas.width = Math.max(1, Math.round(cw * dpr));
-    rhythmCanvas.height = Math.max(1, Math.round(ch * dpr));
-    rhythmCanvas.style.width = cw + "px";
-    rhythmCanvas.style.height = ch + "px";
-    rhythmCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  function rhythmExpToLabel(exp) {
-    var v = Math.pow(2, exp);
-    return v >= 1 ? String(Math.round(v)) : "1/" + Math.round(1 / v);
-  }
-  // The lowest gridline used to sit exactly at the lane's left edge, with no
-  // room for a negative-error bar/dot/label to extend further left without
-  // overlapping the row's note-name label - the highest gridline already
-  // gets a 0.5-octave buffer past it (the "+ 0.5" below) for the same reason
-  // on the positive side, this just mirrors it on the negative side.
-  var RHYTHM_LEFT_BUFFER_OCT = 0.5;
-  function rhythmXForExp(exp) {
-    var span = (rhythmHighExp - rhythmLowExp) + 0.5 + RHYTHM_LEFT_BUFFER_OCT;
-    var laneW = Math.max(10, rhythmW - rhythmLaneX0 - rhythmLaneRight);
-    var ppo = laneW / span;
-    return rhythmLaneX0 + (exp - rhythmLowExp + RHYTHM_LEFT_BUFFER_OCT) * ppo;
-  }
-  function rhythmXForDuration(durationMs) {
-    // Same fallback callers already use for the unit elsewhere (error %,
-    // snapping) - this used to short-circuit to the lane's left edge
-    // whenever rhythmUnitMs was still null (true for the very first note of
-    // a session, before any note has been registered to fit it), which
-    // stranded the live note's growing dot at the left edge instead of
-    // actually tracking its held duration.
-    var unit = rhythmUnitMs || (60000 / bpm);
-    var exp = Math.log2(Math.max(1, durationMs) / unit);
-    exp = Math.max(rhythmLowExp - RHYTHM_LEFT_BUFFER_OCT, Math.min(rhythmHighExp + 0.5, exp));
-    return rhythmXForExp(exp);
-  }
-  function drawRhythmRow(rowTop, note, isLive) {
-    var c = rowTop + RHYTHM_ROW_H / 2;
-    var unit = rhythmUnitMs || (60000 / bpm);
-    var tipX = rhythmXForDuration(note.durationMs);
-    var color = isLive ? "#eef3fb" : rhythmSeverityColor(rhythmErrorAgainst(note.durationMs, unit));
-
-    rhythmCtx.fillStyle = isLive ? "#c98a3a" : "#eef3fb";
-    rhythmCtx.font = "10.5px 'JetBrains Mono', monospace";
-    rhythmCtx.textAlign = "left";
-    rhythmCtx.fillText(noteLabel(note.midi), 4, c + 3.5);
-
-    // The row itself (note name + bar) stays white regardless of timing -
-    // only the error percentage is colored by severity, so the eye goes
-    // straight to the one number that actually matters.
-    rhythmCtx.strokeStyle = "#eef3fb";
-    rhythmCtx.lineWidth = 2;
-    if (isLive) {
-      // Still growing: draw its whole elapsed length from the lane start,
-      // dashed, with the live pitch wobble traced along it - this IS the
-      // note still being played, so it should look like something in
-      // progress, not a finished measurement.
-      rhythmCtx.setLineDash([3, 2]);
-      rhythmCtx.beginPath();
-      var pts = note.points, t0 = pts.length ? pts[0].ms : 0, spanMs = Math.max(1, note.durationMs);
-      for (var p = 0; p < pts.length; p++) {
-        var frac = Math.min(1, (pts[p].ms - t0) / spanMs);
-        var x = rhythmLaneX0 + frac * (tipX - rhythmLaneX0);
-        var y = c - Math.max(-6, Math.min(6, pts[p].cents * 0.08));
-        if (p === 0) rhythmCtx.moveTo(x, y); else rhythmCtx.lineTo(x, y);
-      }
-      rhythmCtx.stroke();
-      rhythmCtx.setLineDash([]);
-    } else {
-      // Registered note: the full length (from the lane start) only tells
-      // you the raw duration, not which note value it was judged against -
-      // a 1/4 note +33% long and an 1/8 note some other error % can end up
-      // looking similar. Instead, anchor the mark at the TARGET duration's
-      // own gridline (so which note value it is is visually obvious - it
-      // lines up with that gridline) and draw only the deviation from it,
-      // toward the actual duration. A perfectly-in-time note is just a dot
-      // sitting on its gridline.
-      var snapped = rhythmSnapValue(note.durationMs / unit);
-      var targetX = rhythmXForDuration(snapped * unit);
-      rhythmCtx.beginPath();
-      rhythmCtx.moveTo(targetX, c);
-      rhythmCtx.lineTo(tipX, c);
-      rhythmCtx.stroke();
-    }
-
-    if (isLive) {
-      var pulse = 0.5 + 0.5 * Math.sin(performance.now() / 180);
-      rhythmCtx.globalAlpha = 0.4 + 0.6 * pulse;
-      rhythmCtx.fillStyle = "#eef3fb";
-      rhythmCtx.beginPath(); rhythmCtx.arc(tipX, c, 3, 0, Math.PI * 2); rhythmCtx.fill();
-      rhythmCtx.globalAlpha = 1;
-    } else {
-      // A dot at the tip marks exactly where the note actually landed,
-      // same visual language as the live note's dot, so a finished note
-      // reads as "this got measured and stopped here" rather than just a
-      // bar that happens to end somewhere.
-      rhythmCtx.fillStyle = color;
-      rhythmCtx.beginPath(); rhythmCtx.arc(tipX, c, 3, 0, Math.PI * 2); rhythmCtx.fill();
-
-      // Number drawn larger than the "%" sign, so the magnitude reads at a
-      // glance while the sign stays a quiet unit label, not competing for
-      // attention. A negative error's bar already extends LEFT of the dot
-      // (toward a shorter duration), so the label goes on the left too -
-      // anchoring it to the right, as for a positive error, would print it
-      // back over the bar itself instead of past the open end.
-      var e = rhythmErrorAgainst(note.durationMs, unit);
-      var negative = e < 0;
-      var numLabel = (e >= 0 ? "+" : "") + Math.round(e);
-      rhythmCtx.font = "13px 'JetBrains Mono', monospace";
-      var numW = rhythmCtx.measureText(numLabel).width;
-      rhythmCtx.font = "10px 'JetBrains Mono', monospace";
-      var pctW = rhythmCtx.measureText("%").width;
-      var gap = 6, innerGap = 1;
-      var numX = negative ? tipX - gap - innerGap - pctW - numW : tipX + gap;
-      rhythmCtx.font = "13px 'JetBrains Mono', monospace";
-      rhythmCtx.fillText(numLabel, numX, c + 4.5);
-      rhythmCtx.font = "10px 'JetBrains Mono', monospace";
-      rhythmCtx.fillText("%", numX + numW + innerGap, c + 3.5);
-    }
-  }
-  function drawRhythmPanel() {
-    if (!rhythmCtx || !rhythmW) return;
-    var h = rhythmCanvas.height / dpr;
-    rhythmCtx.clearRect(0, 0, rhythmW, h);
-
-    rhythmCtx.font = "9px 'JetBrains Mono', monospace";
-    rhythmCtx.textAlign = "center";
-    for (var exp = Math.ceil(rhythmLowExp); exp <= Math.floor(rhythmHighExp); exp++) {
-      var x = rhythmXForExp(exp);
-      rhythmCtx.strokeStyle = exp === 0 ? "#3a4f78" : "#2e4269";
-      rhythmCtx.lineWidth = exp === 0 ? 1.1 : 0.6;
-      rhythmCtx.beginPath(); rhythmCtx.moveTo(x, 0); rhythmCtx.lineTo(x, h); rhythmCtx.stroke();
-      rhythmCtx.fillStyle = exp === 0 ? "#c98a3a" : "#8ca0c4";
-      rhythmCtx.fillText(rhythmExpToLabel(exp), x, h - 4);
-    }
-
-    // Faint dashed row guide, same style as the Staff tab's ledger lines -
-    // a visual rail for each row's bar/dot to sit on, not a hard divider.
-    var rowCount = rhythmNotes.length + (curSegment && curSegment.points.length ? 1 : 0);
-    rhythmCtx.strokeStyle = "#eef3fb33";
-    rhythmCtx.setLineDash([3, 4]);
-    rhythmCtx.lineWidth = 1;
-    for (var ri = 0; ri < rowCount; ri++) {
-      var ry = ri * RHYTHM_ROW_H + RHYTHM_ROW_H / 2;
-      rhythmCtx.beginPath(); rhythmCtx.moveTo(0, ry); rhythmCtx.lineTo(rhythmW, ry); rhythmCtx.stroke();
-    }
-    rhythmCtx.setLineDash([]);
-
-    rhythmNotes.forEach(function (note, i) { drawRhythmRow(i * RHYTHM_ROW_H, note, false); });
-    if (curSegment && curSegment.points.length) {
-      var liveNote = { midi: curSegment.midi, durationMs: Math.max(1, activeMs - curSegment.points[0].ms), points: curSegment.points };
-      drawRhythmRow(rhythmNotes.length * RHYTHM_ROW_H, liveNote, true);
-    }
-  }
-  function followRhythmPanel() {
-    var viewH = rhythmScroll.clientHeight;
-    if (!viewH) return;
-    var totalH = (rhythmNotes.length + 1) * RHYTHM_ROW_H + 16;
-    if (totalH <= viewH) { rhythmScroll.scrollTop = 0; return; }
-    var maxScroll = totalH - viewH;
-    var half = Math.max(1, viewH / 2);
-    rhythmScroll.scrollTop = Math.min(maxScroll, Math.ceil(maxScroll / half) * half);
-  }
-  rhythmZoomLowOut.addEventListener("click", function () {
-    rhythmLowExp = Math.max(RHYTHM_EXP_MIN, rhythmLowExp - 1);
-    fitRhythmPanel(); drawRhythmPanel(); saveSettings();
-  });
-  rhythmZoomLowIn.addEventListener("click", function () {
-    rhythmLowExp = Math.min(rhythmHighExp - 1, rhythmLowExp + 1);
-    fitRhythmPanel(); drawRhythmPanel(); saveSettings();
-  });
-  rhythmZoomHighOut.addEventListener("click", function () {
-    rhythmHighExp = Math.max(rhythmLowExp + 1, rhythmHighExp - 1);
-    fitRhythmPanel(); drawRhythmPanel(); saveSettings();
-  });
-  rhythmZoomHighIn.addEventListener("click", function () {
-    rhythmHighExp = Math.min(RHYTHM_EXP_MAX, rhythmHighExp + 1);
-    fitRhythmPanel(); drawRhythmPanel(); saveSettings();
-  });
-
   // ---------- staff panel: real time, shows what you actually played ----------
   var BOOK_STATUS_COLOR = { hit: "#7ab08f", "wrong-rhythm": "#d9a63a", "wrong-pitch": "#d9693a", extra: "#8ca0c488" };
   function drawBookTarget(w) {
@@ -2541,7 +2141,6 @@
       // sameRunContinues: do nothing further - the run (and its start) stays
       // open, waiting for the next real boundary to finalize it.
     }
-    addRhythmNote(curSegment, atMs);
     curSegment = null;
   }
 
@@ -2765,9 +2364,7 @@
       }
     }
 
-    if (activeTab === "rhythm") {
-      drawRhythmPanel();
-    } else {
+    {
       if (isStaffLike(activeTab)) drawStaff(); else drawContour();
       if (activeTab === "book") { drawBookRef(); followBookRef(); }
       drawTimeAxis();
