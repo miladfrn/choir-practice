@@ -120,7 +120,7 @@
     color: var(--fg); flex: 0 0 auto;
   }
   #settingsBtn { justify-content: center; }
-  #settingsGear { font-size: 34px; line-height: 1; }
+  #settingsGear { font-size: 48px; line-height: 1; }
 
   #main {
     flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
@@ -141,15 +141,10 @@
     gap: 10px;
     min-height: 192px; /* 128px measured height * 1.5 */
   }
-  #actionCol { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+  #actionCol { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
   #actionRow { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-  #tempoReadout {
-    display: flex; flex-direction: row; gap: 6px; align-items: center;
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-dim);
-    letter-spacing: 0.01em; white-space: nowrap; text-align: right; flex: 0 0 auto;
-  }
-  #preStart { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-  #postStart { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; width: 162px; }
+  #preStart { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+  #postStart { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
   button.startBtn {
     flex: 1 1 0;
     min-width: 0;
@@ -162,6 +157,7 @@
   button.startBtn.square { flex: 0 0 auto; width: 81px; height: 81px; padding: 0; justify-content: center; } /* 54px * 1.5, to fit the taller control bar with margin */
   button.startBtn .l1 { font-size: 11.5px; font-weight: 700; }
   button.startBtn .l2 { font-size: 9.5px; font-weight: 400; color: inherit; opacity: 0.85; }
+  #startManual .l1 { font-size: 18px; }
 
   #liveNote { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; overflow: hidden; }
   /* 3x the original kamancheh-practice sizes (38/17/11px) - easier to read
@@ -450,10 +446,6 @@
             </button>
           </div>
         </div>
-        <div id="tempoReadout">
-          <span id="tempoReadoutBpm">Beat:60 bpm /</span>
-          <span id="tempoReadoutA4">A4:440Hz</span>
-        </div>
       </div>
     </div>
 
@@ -692,7 +684,6 @@
   var preStart = $("preStart"), postStart = $("postStart");
   var beatUp = $("beatUp"), beatDown = $("beatDown"), beatNum = $("beatNum");
   var startManual = $("startManual");
-  var tempoReadoutBpm = $("tempoReadoutBpm"), tempoReadoutA4 = $("tempoReadoutA4");
   var settingsBtn = $("settingsBtn"), settingsPanel = $("settingsPanel"), settingsClose = $("settingsClose");
   var notationToggle = $("notationToggle");
   var stopBtn = $("stopBtn"), pauseBtn = $("pauseBtn"), pauseLabel = $("pauseLabel");
@@ -924,7 +915,6 @@
     v = Math.max(300, Math.min(600, Math.round(v)));
     a4 = v;
     a4input.value = v;
-    tempoReadoutA4.textContent = "A4:" + v + "Hz";
     saveSettings();
   }
   a4input.addEventListener("change", function () {
@@ -2313,20 +2303,32 @@
     staffCtx.clearRect(0, 0, w, h);
     if (rollWithTime) drawBeatGrid(staffCtx, w, 0, h);
 
-    // Staff lines: only every OTHER natural note is a line (E,G,B,D,F... -
-    // the traditional line/space alternation, anchored at E4 same as
-    // before), across the configured range (Settings > Range low/high)
-    // instead of a fixed 5-line block plus separate ledger guides beyond
-    // it. Drawing a line at EVERY natural note (line and space both) was
-    // the bug - that's not what a staff looks like.
-    staffCtx.strokeStyle = "#eef3fb55";
+    // Staff lines: exactly 5 solid "main" lines (E,G,B,D,F-style alternating
+    // positions, centered within the configured range), everything else -
+    // both the "space" positions and any extra line-parity positions beyond
+    // those 5 (a wide range has more than 5) - drawn dashed instead, same
+    // visual role the old fixed ledger guides played, just centered on
+    // whatever range is configured instead of a fixed E4-F5 span.
+    var allLinePositions = [];
+    for (var scanMidi = Math.ceil(staffRangeLowMidi); scanMidi <= Math.floor(staffRangeHighMidi); scanMidi++) {
+      if (SHARP_BY_PC[pc(scanMidi)]) continue;
+      if ((diatonicStep(scanMidi) - E4_STEP) % 2 === 0) allLinePositions.push(scanMidi);
+    }
+    var coreCount = Math.min(5, allLinePositions.length);
+    var coreStart = Math.floor((allLinePositions.length - coreCount) / 2);
+    var solidLineMidis = {};
+    for (var li = coreStart; li < coreStart + coreCount; li++) solidLineMidis[allLinePositions[li]] = true;
+
     staffCtx.lineWidth = 1;
     for (var midiLine = Math.ceil(staffRangeLowMidi); midiLine <= Math.floor(staffRangeHighMidi); midiLine++) {
       if (SHARP_BY_PC[pc(midiLine)]) continue;
-      if ((diatonicStep(midiLine) - E4_STEP) % 2 !== 0) continue; // a "space", not a line
       var yLine = pitchScaled ? pitchScaleY(midiLine) : staffY(midiLine);
+      var isSolid = !!solidLineMidis[midiLine];
+      staffCtx.strokeStyle = isSolid ? "#eef3fb66" : "#eef3fb33";
+      staffCtx.setLineDash(isSolid ? [] : [3, 4]);
       staffCtx.beginPath(); staffCtx.moveTo(0, yLine); staffCtx.lineTo(w, yLine); staffCtx.stroke();
     }
+    staffCtx.setLineDash([]);
 
     // dots: snapped to the nearest note's line, or plotted at true continuous pitch
     // (semi-transparent in Book Practice and Staff, so the engraved notes
@@ -2471,7 +2473,6 @@
   function setBpmDisplay(v) {
     bpm = Math.max(30, Math.min(260, Math.round(v)));
     beatNum.textContent = bpm;
-    tempoReadoutBpm.textContent = "Beat:" + bpm + " bpm /";
   }
   setBpmDisplay(60);
 
