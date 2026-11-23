@@ -393,6 +393,18 @@
         <span title="Space staff lines by real pitch distance">Pitch-scaled lines</span>
         <button id="pitchScaleToggle" class="on">On</button>
       </div>
+      <div id="rangeLowRow" class="headerPill">
+        <span title="Lowest note shown on the Staff/Contour graph">Range low</span>
+        <span id="rangeLowLabel" class="mono">La3</span>
+        <button id="rangeLowDown" class="stepBtn">−</button>
+        <button id="rangeLowUp" class="stepBtn">+</button>
+      </div>
+      <div id="rangeHighRow" class="headerPill">
+        <span title="Highest note shown on the Staff/Contour graph">Range high</span>
+        <span id="rangeHighLabel" class="mono">La5</span>
+        <button id="rangeHighDown" class="stepBtn">−</button>
+        <button id="rangeHighUp" class="stepBtn">+</button>
+      </div>
       <div id="rhythmTempoRow" class="headerPill">
         <span title="What tempo Staff-tab Detect Rhythm judges notes against">Detect Rhythm tempo</span>
         <button id="rhythmTempoToggle">Dialed-in</button>
@@ -826,6 +838,35 @@
     updateGutterAndOffsets();
   });
 
+  // Visible vocal range (Staff/Contour graph): a single voice's comfortable
+  // range is much narrower than the old fixed ~3-octave staff span. The
+  // whole staff - lines, ledger guides, and gutter labels - is built from
+  // this range (see staffLayout()/pitchScaleY() and the "5 lines" drawing
+  // in drawStaff()), not a fixed set of pitches, so narrowing it both zooms
+  // in (each note gets more vertical room) and re-centers the lines on
+  // whatever's actually being sung.
+  var rangeLowLabel = $("rangeLowLabel"), rangeHighLabel = $("rangeHighLabel");
+  var rangeLowDown = $("rangeLowDown"), rangeLowUp = $("rangeLowUp");
+  var rangeHighDown = $("rangeHighDown"), rangeHighUp = $("rangeHighUp");
+  var staffRangeLowMidi = 57, staffRangeHighMidi = 81; // A3..A5, 2 octaves
+  var STAFF_RANGE_MIN_SPAN = 6, STAFF_RANGE_ABS_MIN = 24, STAFF_RANGE_ABS_MAX = 108;
+  function updateRangeLabels() {
+    rangeLowLabel.textContent = noteLabel(staffRangeLowMidi);
+    rangeHighLabel.textContent = noteLabel(staffRangeHighMidi);
+  }
+  function setStaffRange(lowMidi, highMidi) {
+    staffRangeLowMidi = Math.max(STAFF_RANGE_ABS_MIN, Math.min(highMidi - STAFF_RANGE_MIN_SPAN, lowMidi));
+    staffRangeHighMidi = Math.min(STAFF_RANGE_ABS_MAX, Math.max(staffRangeLowMidi + STAFF_RANGE_MIN_SPAN, highMidi));
+    updateRangeLabels();
+    saveSettings();
+    updateGutterAndOffsets();
+  }
+  rangeLowDown.addEventListener("click", function () { setStaffRange(staffRangeLowMidi - 1, staffRangeHighMidi); });
+  rangeLowUp.addEventListener("click", function () { setStaffRange(staffRangeLowMidi + 1, staffRangeHighMidi); });
+  rangeHighDown.addEventListener("click", function () { setStaffRange(staffRangeLowMidi, staffRangeHighMidi - 1); });
+  rangeHighUp.addEventListener("click", function () { setStaffRange(staffRangeLowMidi, staffRangeHighMidi + 1); });
+  updateRangeLabels();
+
   // Per-device settings (localStorage, not cookies - this is a static page
   // with no server to send cookies to, and localStorage is the standard
   // tool for "remember this on THIS browser/device" - note it does NOT
@@ -836,7 +877,8 @@
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         a4: a4, rhythmLowExp: rhythmLowExp, rhythmHighExp: rhythmHighExp,
         staffTempoMode: staffTempoMode, staffDiscardShort: staffDiscardShort,
-        staffMergeSamePitch: staffMergeSamePitch
+        staffMergeSamePitch: staffMergeSamePitch,
+        staffRangeLowMidi: staffRangeLowMidi, staffRangeHighMidi: staffRangeHighMidi
       }));
     } catch (e) { /* storage blocked/unavailable - setting just won't persist */ }
   }
@@ -867,6 +909,11 @@
         staffMergeSamePitch = s.staffMergeSamePitch;
         rhythmMergeToggle.textContent = staffMergeSamePitch ? "Merge" : "Split";
         rhythmMergeToggle.classList.toggle("on", staffMergeSamePitch);
+      }
+      if (typeof s.staffRangeLowMidi === "number" && typeof s.staffRangeHighMidi === "number") {
+        staffRangeHighMidi = Math.min(STAFF_RANGE_ABS_MAX, Math.max(STAFF_RANGE_ABS_MIN + STAFF_RANGE_MIN_SPAN, s.staffRangeHighMidi));
+        staffRangeLowMidi = Math.max(STAFF_RANGE_ABS_MIN, Math.min(staffRangeHighMidi - STAFF_RANGE_MIN_SPAN, s.staffRangeLowMidi));
+        updateRangeLabels();
       }
       if (typeof s.a4 === "number") setA4(s.a4);
     } catch (e) { /* corrupt/blocked storage - just keep the defaults */ }
@@ -1341,14 +1388,15 @@
   zoomIn.addEventListener("click", function () { setZoom(PX_PER_SEC * 1.35); });
   zoomOut.addEventListener("click", function () { setZoom(PX_PER_SEC / 1.35); });
 
-  // ---------- staff geometry (compact, fixed spacing; 2 ledger-guide lines each side) ----------
+  // ---------- staff geometry (diatonic-step spacing, adaptive to the configured range) ----------
   function staffLayout() {
-    var halfSpacing = 13;
-    // Ledger-guide range runs from step -6 (bottom) to step 14 (top), a fixed
-    // content height; center that block in the panel so top/bottom margins match.
-    var contentHeight = 20 * halfSpacing;
+    var lowStep = diatonicStep(staffRangeLowMidi) - E4_STEP;
+    var highStep = diatonicStep(staffRangeHighMidi) - E4_STEP;
+    var rangeSteps = Math.max(1, highStep - lowStep);
+    var halfSpacing = Math.max(4, Math.min(30, (panelH - 24) / rangeSteps));
+    var contentHeight = rangeSteps * halfSpacing;
     var topMargin = Math.max(12, (panelH - contentHeight) / 2);
-    var bottomY = topMargin + 14 * halfSpacing; // clears the top ledger line (step 14)
+    var bottomY = topMargin + highStep * halfSpacing; // clears the configured top of range
     return { halfSpacing: halfSpacing, bottomY: bottomY };
   }
   function staffY(midi) {
@@ -1360,31 +1408,39 @@
   // ---------- pitch-scaled mode: line spacing proportional to real semitones ----------
   var LETTER_ORDER = ["C", "D", "E", "F", "G", "A", "B"];
   var LETTER_SEMITONE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-  var LABELED_STEPS = [-6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14]; // every staff line + ledger position
   function stepToMidi(step) {
     var absIndex = step + E4_STEP;
     var octave = Math.floor(absIndex / 7);
     var letter = LETTER_ORDER[absIndex - octave * 7];
     return 12 * (octave + 1) + LETTER_SEMITONE[letter];
   }
-  var PX_PER_SEMITONE = 8;
-  var PITCH_REF_MIDI = stepToMidi(14); // E6, top ledger position
-  var PITCH_BOTTOM_MIDI = stepToMidi(-6); // bottom ledger position
+  // Pixels-per-semitone is derived from the configured vocal range filling
+  // the available panel height, not a fixed constant - narrowing the range
+  // (Settings > Range low/high) makes every note (and the lines/ledger
+  // guides drawn in drawStaff()) bigger and re-centered on what's actually
+  // being sung, instead of a fixed ~3-octave span anchored on E4-F5.
+  function currentPxPerSemitone() {
+    var rangeSemi = Math.max(1, staffRangeHighMidi - staffRangeLowMidi);
+    return Math.max(6, Math.min(40, (panelH - 24) / rangeSemi));
+  }
   function pitchScaleY(midiFloat) {
-    var contentHeight = (PITCH_REF_MIDI - PITCH_BOTTOM_MIDI) * PX_PER_SEMITONE;
+    var pxPerSemi = currentPxPerSemitone();
+    var contentHeight = (staffRangeHighMidi - staffRangeLowMidi) * pxPerSemi;
     var topMargin = Math.max(12, (panelH - contentHeight) / 2);
-    return topMargin + (PITCH_REF_MIDI - midiFloat) * PX_PER_SEMITONE;
+    return topMargin + (staffRangeHighMidi - midiFloat) * pxPerSemi;
   }
   function renderGutterNotes() {
     scopeGutterNotes.innerHTML = "";
-    LABELED_STEPS.forEach(function (step) {
-      var midi = stepToMidi(step);
+    // One label per natural (unsharped) note within the configured range,
+    // instead of a fixed set of staff/ledger positions.
+    for (var midi = Math.ceil(staffRangeLowMidi); midi <= Math.floor(staffRangeHighMidi); midi++) {
+      if (SHARP_BY_PC[pc(midi)]) continue;
       var el = document.createElement("span");
       el.className = "gutterNoteLabel";
       el.style.top = (pitchScaled ? pitchScaleY(midi) : staffY(midi)) + "px";
       el.textContent = noteLabel(midi);
       scopeGutterNotes.appendChild(el);
-    });
+    }
   }
 
   // ---------- book practice ----------
@@ -2254,31 +2310,21 @@
   function drawStaff() {
     var w = lastCanvasWidthPx, h = panelH;
     staffCtx.clearRect(0, 0, w, h);
-    var g = staffLayout();
     if (rollWithTime) drawBeatGrid(staffCtx, w, 0, h);
 
-    // reference line y: equal diatonic spacing, or true semitone-proportional spacing
-    function lineY(step) {
-      return pitchScaled ? pitchScaleY(stepToMidi(step)) : (g.bottomY - step * g.halfSpacing);
+    // Staff lines: one solid guide per natural note within the configured
+    // range (Settings > Range low/high), instead of a fixed 5-line block
+    // plus separate ledger guides beyond it - the whole point of a
+    // configurable range is that it IS the useful span, so every labeled
+    // note within it gets an equally-real line, not a core-vs-extension
+    // split anchored on a fixed E4-F5 staff.
+    staffCtx.strokeStyle = "#eef3fb55";
+    staffCtx.lineWidth = 1;
+    for (var midiLine = Math.ceil(staffRangeLowMidi); midiLine <= Math.floor(staffRangeHighMidi); midiLine++) {
+      if (SHARP_BY_PC[pc(midiLine)]) continue;
+      var yLine = pitchScaled ? pitchScaleY(midiLine) : staffY(midiLine);
+      staffCtx.beginPath(); staffCtx.moveTo(0, yLine); staffCtx.lineTo(w, yLine); staffCtx.stroke();
     }
-
-    // 3 faint ledger-guide lines each side, always visible
-    staffCtx.strokeStyle = "#eef3fb33";
-    staffCtx.setLineDash([3, 4]);
-    staffCtx.lineWidth = 1;
-    [ -6, -4, -2, 10, 12, 14 ].forEach(function (step) {
-      var y = lineY(step);
-      staffCtx.beginPath(); staffCtx.moveTo(0, y); staffCtx.lineTo(w, y); staffCtx.stroke();
-    });
-    staffCtx.setLineDash([]);
-
-    // 5 staff lines
-    staffCtx.strokeStyle = "#eef3fb66";
-    staffCtx.lineWidth = 1;
-    [0, 2, 4, 6, 8].forEach(function (step) {
-      var y = lineY(step);
-      staffCtx.beginPath(); staffCtx.moveTo(0, y); staffCtx.lineTo(w, y); staffCtx.stroke();
-    });
 
     // dots: snapped to the nearest note's line, or plotted at true continuous pitch
     // (semi-transparent in Book Practice and Staff, so the engraved notes
@@ -2290,7 +2336,12 @@
     // the radius too, specifically for Detect Rhythm, cuts that overlap at
     // the geometry level instead of just fighting it with more transparency.
     var inRhythmMode = activeTab === "staff" && staffRhythmOn;
-    var dotRadius = inRhythmMode ? 1.1 : 2.1;
+    // Scaled to the SAME adaptive density pitchScaleY uses (ratio preserved
+    // from the old fixed PX_PER_SEMITONE=8 baseline: 2.1/8 and 1.1/8) - so
+    // narrowing the configured range makes the dot bigger right along with
+    // the lines it sits on.
+    var pxPerSemiForDot = pitchScaled ? currentPxPerSemitone() : 8;
+    var dotRadius = (inRhythmMode ? 0.1375 : 0.2625) * pxPerSemiForDot;
     staffCtx.fillStyle = "#eef3fb";
     staffCtx.globalAlpha = activeTab === "book" ? 0.55 : inRhythmMode ? 0.12 : 1;
     for (var n = 0; n < scatterPoints.length; n++) {
