@@ -345,15 +345,14 @@
   }
   #statusPortrait {
     width: 100%; max-width: 480px; height: auto;
+    border-radius: 10px; object-fit: cover;
   }
   @media (max-width: 480px) {
-    #statusPortrait { width: calc(100% + 64px); max-width: none; margin: 0 -32px; }
+    #statusPortrait { width: calc(100% + 64px); max-width: none; margin: 0 -32px; border-radius: 0; }
   }
   #status h2 { font-size: 20px; margin: 10px 0 0; }
   #status h2 .statusKicker { display: block; font-size: 17px; font-weight: 400; color: var(--fg-dim); letter-spacing: 0.03em; margin-bottom: 2px; }
   #status p { color: var(--fg-dim); font-size: 14px; max-width: 46ch; margin: 0; }
-  #statusInfo a { color: var(--accent); text-decoration: none; }
-  #statusInfo a:hover { text-decoration: underline; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -365,7 +364,7 @@
       <h2>Settings</h2>
       <div id="a4" class="headerPill">
         <span>A4</span>
-        <input id="a4input" type="number" value="434" step="1" inputmode="numeric">
+        <input id="a4input" type="number" value="440" step="1" inputmode="numeric">
         <button id="a4down" class="stepBtn">−</button>
         <button id="a4up" class="stepBtn">+</button>
       </div>
@@ -434,7 +433,7 @@
         </div>
         <div id="tempoReadout">
           <span id="tempoReadoutBpm">Beat:60 bpm /</span>
-          <span id="tempoReadoutA4">A4:434Hz</span>
+          <span id="tempoReadoutA4">A4:440Hz</span>
         </div>
       </div>
     </div>
@@ -519,9 +518,8 @@
 </div>
 
 <div id="status">
-  <img id="statusPortrait" src="landing-musicians.webp" alt="">
-  <h2><span class="statusKicker">Bay Area Persian Choir</span>Play. Track. Improve.</h2>
-  <p id="statusInfo"><a href="https://www.bayareapersianchoir.com/#top" target="_blank" rel="noopener">More info about the choir &rarr;</a></p>
+  <img id="statusPortrait" src="choir-hero.jpg" alt="">
+  <h2><span class="statusKicker">Bay Area Persian Choir</span>Sing. Track. Improve.</h2>
   <p id="statusMsg"></p>
   <button id="statusBtn" class="primary">Allow microphone</button>
 </div>
@@ -535,7 +533,7 @@
   var LETTER_BY_PC = ["C","C","D","D","E","F","F","G","G","A","A","B"];
   var SHARP_BY_PC  = [false,true,false,true,false,false,true,false,true,false,true,false];
   var DIATONIC_INDEX = { C:0, D:1, E:2, F:3, G:4, A:5, B:6 };
-  var a4 = 434;
+  var a4 = 440;
   var noteSystem = "solfege"; // or "letters" — which names noteLabel()/the live readout use
   var MIDI_MIN = 36, MIDI_MAX = 100; // plausible kamancheh+voice range; clamps octave-error glitches
 
