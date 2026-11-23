@@ -499,7 +499,7 @@
     <div id="scopeOuter">
       <div id="scopeGutter">
         <div id="scopeGutterNums">
-          <span>40</span><span>30</span><span>20</span><span>10</span><span>0</span><span>-10</span><span>-20</span><span>-30</span><span>-40</span>
+          <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span><span>-25</span><span>-50</span><span>-75</span><span>-100</span>
         </div>
         <div id="scopeGutterNotes" hidden></div>
         <div id="scopeGutterSpacer"></div>
@@ -2375,14 +2375,14 @@
     contourCtx.clearRect(0, 0, w, h);
 
     var top = 4, bandH = h - 8;
-    function yOfCents(c) { return top + bandH / 2 - (Math.max(-50, Math.min(50, c)) / 50) * (bandH / 2); }
+    function yOfCents(c) { return top + bandH / 2 - (Math.max(-100, Math.min(100, c)) / 100) * (bandH / 2); }
 
     contourCtx.fillStyle = "#c98a3a1f";
     contourCtx.fillRect(0, yOfCents(10), w, yOfCents(-10) - yOfCents(10));
 
     contourCtx.strokeStyle = "#ffffff14";
     contourCtx.lineWidth = 1;
-    for (var c = -40; c <= 40; c += 10) {
+    for (var c = -100; c <= 100; c += 25) {
       var gy = yOfCents(c);
       contourCtx.beginPath(); contourCtx.moveTo(0, gy); contourCtx.lineTo(w, gy); contourCtx.stroke();
     }
