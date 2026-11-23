@@ -401,6 +401,16 @@
         <span title="How easily a brief dip between notes counts as a gap">Sensitivity</span>
         <button id="sensToggle">4</button>
       </div>
+      <div id="calibRow" class="headerPill">
+        <span title="The background noise level measured right after the mic was last granted">Mic calibrated to</span>
+        <span id="calibReadout" class="mono">—</span>
+      </div>
+      <div id="calibBiasRow" class="headerPill">
+        <span title="Adjusts the auto-calibrated floor up (less sensitive) or down (more sensitive), relative to the measured background noise">Calibration bias</span>
+        <span id="calibBiasLabel" class="mono">100%</span>
+        <button id="calibBiasDown" class="stepBtn">−</button>
+        <button id="calibBiasUp" class="stepBtn">+</button>
+      </div>
       <div id="pitchScaleRow" class="headerPill">
         <span title="Space staff lines by real pitch distance">Pitch-scaled lines</span>
         <button id="pitchScaleToggle" class="on">On</button>
@@ -715,6 +725,8 @@
   var zoomIn = $("zoomIn"), zoomOut = $("zoomOut");
   var a4down = $("a4down"), a4up = $("a4up");
   var rollToggle = $("rollToggle"), pitchScaleToggle = $("pitchScaleToggle"), sensToggle = $("sensToggle");
+  var calibReadout = $("calibReadout"), calibBiasLabel = $("calibBiasLabel");
+  var calibBiasDown = $("calibBiasDown"), calibBiasUp = $("calibBiasUp");
   var rhythmToggle = $("rhythmToggle");
   var staffRhythmStat = $("staffRhythmStat");
   var staffRhythmOn = false;
@@ -844,7 +856,7 @@
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         a4: a4, rhythmLowExp: rhythmLowExp, rhythmHighExp: rhythmHighExp,
         staffTempoMode: staffTempoMode, staffDiscardShort: staffDiscardShort,
-        staffMergeSamePitch: staffMergeSamePitch
+        staffMergeSamePitch: staffMergeSamePitch, calibrationBias: calibrationBias
       }));
     } catch (e) { /* storage blocked/unavailable - setting just won't persist */ }
   }
@@ -876,6 +888,10 @@
         staffMergeSamePitch = s.staffMergeSamePitch;
         rhythmMergeToggle.textContent = staffMergeSamePitch ? "Merge" : "Split";
         rhythmMergeToggle.classList.toggle("on", staffMergeSamePitch);
+      }
+      if (typeof s.calibrationBias === "number") {
+        calibrationBias = Math.max(CALIB_BIAS_MIN, Math.min(CALIB_BIAS_MAX, s.calibrationBias));
+        applyCalibrationBias();
       }
       if (typeof s.a4 === "number") setA4(s.a4);
     } catch (e) { /* corrupt/blocked storage - just keep the defaults */ }
@@ -975,6 +991,24 @@
   // noise burst (a cough, a door) crossing the floor once is still enough to
   // spawn a fake note later if the floor doesn't account for it.
   var CALIBRATE_MS = 600, CALIBRATE_MARGIN = 2.5;
+  // Relative adjustment layered on TOP of the auto-calibration below, so you
+  // can nudge the result more/less sensitive without having to re-calibrate
+  // (re-granting the mic) or abandon auto-calibration altogether. 100% =
+  // the measured value as-is; below 100% lowers the floor (more sensitive
+  // than what was measured), above 100% raises it (less sensitive).
+  var calibrationBias = 1, CALIB_BIAS_MIN = 0.25, CALIB_BIAS_MAX = 3, CALIB_BIAS_STEP = 0.25;
+  var lastAmbientPeak = 0; // raw measured peak, before CALIBRATE_MARGIN/calibrationBias - kept so the bias slider can recompute without a new calibration pass
+  function updateCalibReadout() {
+    calibReadout.textContent = lastAmbientPeak ? ambientFloor.toFixed(4) : "not calibrated yet";
+  }
+  function applyCalibrationBias() {
+    if (lastAmbientPeak) {
+      ambientFloor = lastAmbientPeak * CALIBRATE_MARGIN * calibrationBias;
+      applySensitivity();
+      updateCalibReadout();
+    }
+    calibBiasLabel.textContent = Math.round(calibrationBias * 100) + "%";
+  }
   function calibrateAmbientNoise(done) {
     setStatus("Calibrating to room noise — please stay silent…");
     var calBuf = new Float32Array(analyser.fftSize);
@@ -988,8 +1022,10 @@
       if (performance.now() - startedAt < CALIBRATE_MS) {
         requestAnimationFrame(tick);
       } else {
-        ambientFloor = peak * CALIBRATE_MARGIN;
+        lastAmbientPeak = peak;
+        ambientFloor = peak * CALIBRATE_MARGIN * calibrationBias;
         applySensitivity();
+        updateCalibReadout();
         done();
       }
     }
@@ -1023,7 +1059,7 @@
       calibrateAmbientNoise(finishMicSetup);
       function finishMicSetup() {
         statusEl.hidden = true;
-        setStatus("Microphone ready.");
+        setStatus("Microphone ready. Calibrated to background noise floor " + ambientFloor.toFixed(4) + ".");
         fitScopes();
         // the panel's measured height can be briefly stale right after the
         // status overlay is hidden (seen on mobile Safari especially), which
@@ -1209,6 +1245,17 @@
     sensIdx = (sensIdx + 1) % SENS_LEVELS.length;
     applySensitivity();
   });
+  calibBiasDown.addEventListener("click", function () {
+    calibrationBias = Math.max(CALIB_BIAS_MIN, +(calibrationBias - CALIB_BIAS_STEP).toFixed(2));
+    applyCalibrationBias();
+    saveSettings();
+  });
+  calibBiasUp.addEventListener("click", function () {
+    calibrationBias = Math.min(CALIB_BIAS_MAX, +(calibrationBias + CALIB_BIAS_STEP).toFixed(2));
+    applyCalibrationBias();
+    saveSettings();
+  });
+  applyCalibrationBias();
   var soundActive = false, lastSoundAt = 0;
   var recentLevel = 0; // tracks the recent SUSTAINED (non-dip) playing level
   var activeMs = 0, lastFrameNow = null;
