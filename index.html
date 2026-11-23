@@ -1174,16 +1174,16 @@
   // level as a gap. Low = fewer false gaps from bow noise/vibrato; High =
   // catches brief dips, even forceful ones, more eagerly.
   var SENS_LEVELS = [
-    { label: "5", floor: 0.0035, hold: 550, dip: 0.45 },
-    { label: "4", floor: 0.0018, hold: 220, dip: 0.65 },
-    { label: "3", floor: 0.001, hold: 120, dip: 0.8 },
-    { label: "2", floor: 0.0006, hold: 70, dip: 0.88 },
     { label: "1", floor: 0.0004, hold: 40, dip: 0.93 },
-    { label: "6", floor: 0.00028, hold: 25, dip: 0.95 },
-    { label: "7", floor: 0.00018, hold: 15, dip: 0.97 },
-    { label: "8", floor: 0.00012, hold: 10, dip: 0.98 }
+    { label: "2", floor: 0.0006, hold: 70, dip: 0.88 },
+    { label: "3", floor: 0.001, hold: 120, dip: 0.8 },
+    { label: "4", floor: 0.0018, hold: 220, dip: 0.65 },
+    { label: "5", floor: 0.0035, hold: 550, dip: 0.45 },
+    { label: "6", floor: 0.005, hold: 750, dip: 0.35 },
+    { label: "7", floor: 0.007, hold: 1000, dip: 0.28 },
+    { label: "8", floor: 0.01, hold: 1300, dip: 0.2 }
   ];
-  var sensIdx = 1;
+  var sensIdx = 3;
   // Measured once per mic grant (see calibrateAmbientNoise): the actual
   // ambient/self-noise floor THIS mic+room produces, with margin. A laptop's
   // built-in mic can have far more self/ambient noise than a phone's, and
