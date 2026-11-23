@@ -411,7 +411,7 @@
       </div>
       <div id="rhythmDiscardRow" class="headerPill">
         <span title="Staff-tab Detect Rhythm: drop detected notes much shorter than a plausible note value, instead of showing them">Discard short notes</span>
-        <button id="rhythmDiscardToggle" class="on">On</button>
+        <button id="rhythmDiscardToggle">Off</button>
       </div>
       <div id="rhythmMergeRow" class="headerPill">
         <span title="Staff-tab Detect Rhythm: a bow change on the same pitch - merge into the held note, or read as its own note">Same-pitch notes</span>
@@ -778,11 +778,12 @@
   // symbols for notes that were never really played. Exposed as a setting
   // since a real very-short note is technically possible, however rare.
   var rhythmDiscardToggle = $("rhythmDiscardToggle");
-  var staffDiscardShort = true;
+  var staffDiscardShort = false;
   var STAFF_RHYTHM_FLOOR_BEATS = 0.25; // shortest plausible note value, in beats
   rhythmDiscardToggle.addEventListener("click", function () {
     staffDiscardShort = !staffDiscardShort;
     rhythmDiscardToggle.classList.toggle("on", staffDiscardShort);
+    rhythmDiscardToggle.textContent = staffDiscardShort ? "On" : "Off";
     saveSettings();
   });
   function isTooShortForStaffRhythm(durationMs) {
@@ -869,6 +870,7 @@
       if (typeof s.staffDiscardShort === "boolean") {
         staffDiscardShort = s.staffDiscardShort;
         rhythmDiscardToggle.classList.toggle("on", staffDiscardShort);
+        rhythmDiscardToggle.textContent = staffDiscardShort ? "On" : "Off";
       }
       if (typeof s.staffMergeSamePitch === "boolean") {
         staffMergeSamePitch = s.staffMergeSamePitch;
