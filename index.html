@@ -397,19 +397,15 @@
         <span>Notes</span>
         <button id="notationToggle" class="on">Do Re Mi</button>
       </div>
+      <div id="noiseFloorRow" class="headerPill">
+        <span title="The background noise level, auto-measured each time the mic is granted - adjust it manually if a noisy calibration got it wrong">Noise floor</span>
+        <span id="noiseFloorLabel" class="mono">0.0010</span>
+        <button id="noiseFloorDown" class="stepBtn">−</button>
+        <button id="noiseFloorUp" class="stepBtn">+</button>
+      </div>
       <div id="gapRow" class="headerPill">
-        <span title="How easily a brief dip between notes counts as a gap">Sensitivity</span>
+        <span title="How easily a brief dip between notes counts as a gap - relative to the Noise floor above">Sensitivity</span>
         <button id="sensToggle">4</button>
-      </div>
-      <div id="calibRow" class="headerPill">
-        <span title="The background noise level measured right after the mic was last granted">Mic calibrated to</span>
-        <span id="calibReadout" class="mono">—</span>
-      </div>
-      <div id="calibBiasRow" class="headerPill">
-        <span title="Adjusts the auto-calibrated floor up (less sensitive) or down (more sensitive), relative to the measured background noise">Calibration bias</span>
-        <span id="calibBiasLabel" class="mono">100%</span>
-        <button id="calibBiasDown" class="stepBtn">−</button>
-        <button id="calibBiasUp" class="stepBtn">+</button>
       </div>
       <div id="pitchScaleRow" class="headerPill">
         <span title="Space staff lines by real pitch distance">Pitch-scaled lines</span>
@@ -725,8 +721,8 @@
   var zoomIn = $("zoomIn"), zoomOut = $("zoomOut");
   var a4down = $("a4down"), a4up = $("a4up");
   var rollToggle = $("rollToggle"), pitchScaleToggle = $("pitchScaleToggle"), sensToggle = $("sensToggle");
-  var calibReadout = $("calibReadout"), calibBiasLabel = $("calibBiasLabel");
-  var calibBiasDown = $("calibBiasDown"), calibBiasUp = $("calibBiasUp");
+  var noiseFloorLabel = $("noiseFloorLabel");
+  var noiseFloorDown = $("noiseFloorDown"), noiseFloorUp = $("noiseFloorUp");
   var rhythmToggle = $("rhythmToggle");
   var staffRhythmStat = $("staffRhythmStat");
   var staffRhythmOn = false;
@@ -856,7 +852,7 @@
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         a4: a4, rhythmLowExp: rhythmLowExp, rhythmHighExp: rhythmHighExp,
         staffTempoMode: staffTempoMode, staffDiscardShort: staffDiscardShort,
-        staffMergeSamePitch: staffMergeSamePitch, calibrationBias: calibrationBias
+        staffMergeSamePitch: staffMergeSamePitch
       }));
     } catch (e) { /* storage blocked/unavailable - setting just won't persist */ }
   }
@@ -888,10 +884,6 @@
         staffMergeSamePitch = s.staffMergeSamePitch;
         rhythmMergeToggle.textContent = staffMergeSamePitch ? "Merge" : "Split";
         rhythmMergeToggle.classList.toggle("on", staffMergeSamePitch);
-      }
-      if (typeof s.calibrationBias === "number") {
-        calibrationBias = Math.max(CALIB_BIAS_MIN, Math.min(CALIB_BIAS_MAX, s.calibrationBias));
-        applyCalibrationBias();
       }
       if (typeof s.a4 === "number") setA4(s.a4);
     } catch (e) { /* corrupt/blocked storage - just keep the defaults */ }
@@ -991,23 +983,16 @@
   // noise burst (a cough, a door) crossing the floor once is still enough to
   // spawn a fake note later if the floor doesn't account for it.
   var CALIBRATE_MS = 600, CALIBRATE_MARGIN = 2.5;
-  // Relative adjustment layered on TOP of the auto-calibration below, so you
-  // can nudge the result more/less sensitive without having to re-calibrate
-  // (re-granting the mic) or abandon auto-calibration altogether. 100% =
-  // the measured value as-is; below 100% lowers the floor (more sensitive
-  // than what was measured), above 100% raises it (less sensitive).
-  var calibrationBias = 1, CALIB_BIAS_MIN = 0.25, CALIB_BIAS_MAX = 3, CALIB_BIAS_STEP = 0.25;
-  var lastAmbientPeak = 0; // raw measured peak, before CALIBRATE_MARGIN/calibrationBias - kept so the bias slider can recompute without a new calibration pass
-  function updateCalibReadout() {
-    calibReadout.textContent = lastAmbientPeak ? ambientFloor.toFixed(4) : "not calibrated yet";
-  }
-  function applyCalibrationBias() {
-    if (lastAmbientPeak) {
-      ambientFloor = lastAmbientPeak * CALIBRATE_MARGIN * calibrationBias;
-      applySensitivity();
-      updateCalibReadout();
-    }
-    calibBiasLabel.textContent = Math.round(calibrationBias * 100) + "%";
+  // The single source of truth for "how loud is silence right now" - seeded
+  // from the auto-calibration below each time the mic is granted, but a
+  // plain visible/editable number from then on (not hidden behind a max()
+  // against a fixed preset), so a bad calibration (noise during the silent
+  // window) can just be corrected by hand instead of silently overriding
+  // every sensitivity preset.
+  var noiseFloorBase = 0.001;
+  var NOISE_FLOOR_MIN = 0.00005, NOISE_FLOOR_MAX = 0.05, NOISE_FLOOR_STEP_MULT = 1.2;
+  function updateNoiseFloorLabel() {
+    noiseFloorLabel.textContent = noiseFloorBase.toFixed(4);
   }
   function calibrateAmbientNoise(done) {
     setStatus("Calibrating to room noise — please stay silent…");
@@ -1022,10 +1007,9 @@
       if (performance.now() - startedAt < CALIBRATE_MS) {
         requestAnimationFrame(tick);
       } else {
-        lastAmbientPeak = peak;
-        ambientFloor = peak * CALIBRATE_MARGIN * calibrationBias;
+        noiseFloorBase = peak * CALIBRATE_MARGIN;
         applySensitivity();
-        updateCalibReadout();
+        updateNoiseFloorLabel();
         done();
       }
     }
@@ -1059,7 +1043,7 @@
       calibrateAmbientNoise(finishMicSetup);
       function finishMicSetup() {
         statusEl.hidden = true;
-        setStatus("Microphone ready. Calibrated to background noise floor " + ambientFloor.toFixed(4) + ".");
+        setStatus("Microphone ready. Noise floor set to " + noiseFloorBase.toFixed(4) + ".");
         fitScopes();
         // the panel's measured height can be briefly stale right after the
         // status overlay is hidden (seen on mobile Safari especially), which
@@ -1211,32 +1195,27 @@
   // so `dip` also treats a big enough RELATIVE drop from the recent playing
   // level as a gap. Low = fewer false gaps from bow noise/vibrato; High =
   // catches brief dips, even forceful ones, more eagerly.
+  // floorMult is now RELATIVE to noiseFloorBase (the measured/editable noise
+  // floor above), not an absolute RMS value - so these presets scale with
+  // whatever this mic/room actually measures, instead of competing against
+  // it via a max(). Ratios carried over from the old absolute values
+  // (which ranged 0.0004..0.01, with 0.001 as the old "middle" preset).
   var SENS_LEVELS = [
-    { label: "1", floor: 0.0004, hold: 40, dip: 0.93 },
-    { label: "2", floor: 0.0006, hold: 70, dip: 0.88 },
-    { label: "3", floor: 0.001, hold: 120, dip: 0.8 },
-    { label: "4", floor: 0.0018, hold: 220, dip: 0.65 },
-    { label: "5", floor: 0.0035, hold: 550, dip: 0.45 },
-    { label: "6", floor: 0.005, hold: 750, dip: 0.35 },
-    { label: "7", floor: 0.007, hold: 1000, dip: 0.28 },
-    { label: "8", floor: 0.01, hold: 1300, dip: 0.2 }
+    { label: "1", floorMult: 0.4, hold: 40, dip: 0.93 },
+    { label: "2", floorMult: 0.6, hold: 70, dip: 0.88 },
+    { label: "3", floorMult: 1.0, hold: 120, dip: 0.8 },
+    { label: "4", floorMult: 1.8, hold: 220, dip: 0.65 },
+    { label: "5", floorMult: 3.5, hold: 550, dip: 0.45 },
+    { label: "6", floorMult: 5.0, hold: 750, dip: 0.35 },
+    { label: "7", floorMult: 7.0, hold: 1000, dip: 0.28 },
+    { label: "8", floorMult: 10.0, hold: 1300, dip: 0.2 }
   ];
   var sensIdx = 3;
-  // Measured once per mic grant (see calibrateAmbientNoise): the actual
-  // ambient/self-noise floor THIS mic+room produces, with margin. A laptop's
-  // built-in mic can have far more self/ambient noise than a phone's, and
-  // the fixed inputGain boost amplifies that right along with real playing -
-  // without this, a noisy mic can sit above the sensitivity preset's floor
-  // permanently, so the app thinks something is always sounding and keeps
-  // spawning notes out of pure noise even in total silence. The sensitivity
-  // preset's own floor still acts as a MINIMUM (quiet, clean mics aren't
-  // penalized), this only ever raises it, never lowers it below the preset.
-  var ambientFloor = 0;
-  var NOISE_FLOOR = SENS_LEVELS[sensIdx].floor;
+  var NOISE_FLOOR = noiseFloorBase * SENS_LEVELS[sensIdx].floorMult;
   var SILENCE_HOLD_MS = SENS_LEVELS[sensIdx].hold;
   var DIP_RATIO = SENS_LEVELS[sensIdx].dip;
   function applySensitivity() {
-    NOISE_FLOOR = Math.max(SENS_LEVELS[sensIdx].floor, ambientFloor);
+    NOISE_FLOOR = noiseFloorBase * SENS_LEVELS[sensIdx].floorMult;
     SILENCE_HOLD_MS = SENS_LEVELS[sensIdx].hold;
     DIP_RATIO = SENS_LEVELS[sensIdx].dip;
     sensToggle.textContent = SENS_LEVELS[sensIdx].label;
@@ -1245,17 +1224,19 @@
     sensIdx = (sensIdx + 1) % SENS_LEVELS.length;
     applySensitivity();
   });
-  calibBiasDown.addEventListener("click", function () {
-    calibrationBias = Math.max(CALIB_BIAS_MIN, +(calibrationBias - CALIB_BIAS_STEP).toFixed(2));
-    applyCalibrationBias();
+  noiseFloorDown.addEventListener("click", function () {
+    noiseFloorBase = Math.max(NOISE_FLOOR_MIN, noiseFloorBase / NOISE_FLOOR_STEP_MULT);
+    applySensitivity();
+    updateNoiseFloorLabel();
     saveSettings();
   });
-  calibBiasUp.addEventListener("click", function () {
-    calibrationBias = Math.min(CALIB_BIAS_MAX, +(calibrationBias + CALIB_BIAS_STEP).toFixed(2));
-    applyCalibrationBias();
+  noiseFloorUp.addEventListener("click", function () {
+    noiseFloorBase = Math.min(NOISE_FLOOR_MAX, noiseFloorBase * NOISE_FLOOR_STEP_MULT);
+    applySensitivity();
+    updateNoiseFloorLabel();
     saveSettings();
   });
-  applyCalibrationBias();
+  updateNoiseFloorLabel();
   var soundActive = false, lastSoundAt = 0;
   var recentLevel = 0; // tracks the recent SUSTAINED (non-dip) playing level
   var activeMs = 0, lastFrameNow = null;
