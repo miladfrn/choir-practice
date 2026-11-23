@@ -398,8 +398,8 @@
         <button id="notationToggle" class="on">Do Re Mi</button>
       </div>
       <div id="noiseFloorRow" class="headerPill">
-        <span title="The background noise level, auto-measured each time the mic is granted - adjust it manually if a noisy calibration got it wrong">Noise floor</span>
-        <span id="noiseFloorLabel" class="mono">0.0010</span>
+        <span title="The background noise level, auto-measured each time the mic is granted. 1.00 = a typical quiet room; higher means your mic/room is noisier than usual. Adjust it manually if a noisy calibration got it wrong">Noise floor</span>
+        <span id="noiseFloorLabel" class="mono">1.00</span>
         <button id="noiseFloorDown" class="stepBtn">−</button>
         <button id="noiseFloorUp" class="stepBtn">+</button>
       </div>
@@ -463,7 +463,7 @@
       <button id="tabStaff" class="on">Staff</button>
       <button id="tabContour">Contour</button>
       <button id="tabBook"><span class="l1">Practice</span><span class="l2" id="tabBookSub" hidden></span></button>
-      <button id="tabRhythm">Rhythm</button>
+      <button id="tabRhythm">Find the note!</button>
     </div>
 
     <div id="piecePicker" hidden>
@@ -991,8 +991,14 @@
   // every sensitivity preset.
   var noiseFloorBase = 0.001;
   var NOISE_FLOOR_MIN = 0.00005, NOISE_FLOOR_MAX = 0.05, NOISE_FLOOR_STEP_MULT = 1.2;
+  // Raw RMS values (0.001, 0.03, ...) mean nothing to a user, so everything
+  // shown on screen is normalized against this reference - a typical quiet
+  // room's measured floor - so "1.0" reads as "normal" and anything much
+  // higher immediately reads as "this room/mic is noisier than usual."
+  var NOISE_FLOOR_REFERENCE = 0.001;
+  function noiseFloorDisplayValue() { return noiseFloorBase / NOISE_FLOOR_REFERENCE; }
   function updateNoiseFloorLabel() {
-    noiseFloorLabel.textContent = noiseFloorBase.toFixed(4);
+    noiseFloorLabel.textContent = noiseFloorDisplayValue().toFixed(2);
   }
   function calibrateAmbientNoise(done) {
     setStatus("Calibrating to room noise — please stay silent…");
@@ -1043,7 +1049,7 @@
       calibrateAmbientNoise(finishMicSetup);
       function finishMicSetup() {
         statusEl.hidden = true;
-        setStatus("Microphone ready. Noise floor set to " + noiseFloorBase.toFixed(4) + ".");
+        setStatus("Microphone ready. Noise floor set to " + noiseFloorDisplayValue().toFixed(2) + " (1.00 = typical).");
         fitScopes();
         // the panel's measured height can be briefly stale right after the
         // status overlay is hidden (seen on mobile Safari especially), which
